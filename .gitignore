@@ -1,0 +1,10 @@
+# Node
+node_modules/
+dist/
+
+# Ambiente
+.env
+
+# IDE
+.vscode/
+.DS_Store

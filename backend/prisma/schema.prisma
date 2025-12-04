@@ -1,0 +1,198 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+enum ClassType {
+  THEORY
+  PRACTICE
+  MEDITATION
+  BREATHWORK
+  OTHER
+}
+
+enum ClassLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum BannerLinkType {
+  EXTERNAL_URL
+  CLASS
+  JOURNEY
+}
+
+model User {
+  id               String             @id @default(uuid()) @db.Uuid
+  name             String?
+  email            String             @unique
+  passwordHash     String
+  role             Role               @default(STUDENT)
+  createdAt        DateTime           @default(now())
+
+  subscriptions    Subscription[]
+  practiceSessions PracticeSession[]
+  favorites        Favorite[]
+  userPoints       UserPoints?
+}
+
+model Plan {
+  id               Int             @id @default(autoincrement())
+  name             String
+  durationDays     Int
+  priceCents       Int
+  hotmartProductId String?
+  createdAt        DateTime        @default(now())
+
+  subscriptions    Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  user                 User               @relation(fields: [userId], references: [id])
+  userId               String             @db.Uuid
+  plan                 Plan?              @relation(fields: [planId], references: [id])
+  planId               Int?
+  status               SubscriptionStatus
+  startAt              DateTime
+  endAt                DateTime
+  hotmartTransactionId String?
+  createdAt            DateTime           @default(now())
+
+  @@index([userId])
+  @@index([planId])
+}
+
+model Category {
+  id       Int             @id @default(autoincrement())
+  name     String          @unique
+
+  classes  ClassCategory[]
+}
+
+model Class {
+  id               Int               @id @default(autoincrement())
+  title            String
+  description      String
+  type             ClassType
+  level            ClassLevel
+  durationMinutes  Int
+  thumbnailUrl     String?
+  videoSource      String
+  videoUrl         String
+  published        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+
+  categories       ClassCategory[]
+  journeys         JourneyClass[]
+  favorites        Favorite[]
+  practiceSessions PracticeSession[]
+  banners          Banner[]
+}
+
+model ClassCategory {
+  class      Class    @relation(fields: [classId], references: [id])
+  classId    Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId Int
+
+  @@id([classId, categoryId])
+  @@index([categoryId])
+}
+
+model Journey {
+  id          Int            @id @default(autoincrement())
+  name        String
+  description String?
+  imageUrl    String?
+  createdAt   DateTime       @default(now())
+
+  classes     JourneyClass[]
+  banners     Banner[]
+}
+
+model JourneyClass {
+  journey   Journey @relation(fields: [journeyId], references: [id])
+  journeyId Int
+  class     Class   @relation(fields: [classId], references: [id])
+  classId   Int
+  order     Int
+
+  @@id([journeyId, classId])
+  @@index([classId])
+}
+
+model Favorite {
+  user      User  @relation(fields: [userId], references: [id])
+  userId    String @db.Uuid
+  class     Class @relation(fields: [classId], references: [id])
+  classId   Int
+  createdAt DateTime @default(now())
+
+  @@id([userId, classId])
+}
+
+model PracticeSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.Uuid
+  class     Class    @relation(fields: [classId], references: [id])
+  classId   Int
+  startedAt DateTime @default(now())
+  minutes   Int
+
+  @@index([userId])
+  @@index([classId])
+}
+
+model UserPoints {
+  user       User   @relation(fields: [userId], references: [id])
+  userId     String @id @db.Uuid
+  totalPoints Int   @default(0)
+}
+
+model Banner {
+  id        Int             @id @default(autoincrement())
+  imageUrl  String
+  title     String?
+  subtitle  String?
+  linkType  BannerLinkType
+  linkUrl   String?
+
+  class     Class?          @relation(fields: [classId], references: [id])
+  classId   Int?
+
+  journey   Journey?        @relation(fields: [journeyId], references: [id])
+  journeyId Int?
+
+  startAt   DateTime
+  endAt     DateTime
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+
+  @@index([classId])
+  @@index([journeyId])
+}
